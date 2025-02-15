@@ -1,0 +1,51 @@
+#csv file manipulation
+new_file <- new_file %>%
+
+#add new column with ref to alt 
+mutate(new_column = paste (csv_file$column_name1, ">", csv_file$column_name2))
+
+counts <- mutate %>%
+group_by(new_column)%>%
+summarize(counts=n())
+
+#plot a bar plot
+barplot(counts$count, las=2)
+
+
+
+####R script
+#load the csv file
+snps <- read.csv("only_snp_node.csv")
+
+#add new column with ref to alt 
+snps <- snps %>%
+mutate(mutation = paste (snps$REF, ">", snps$ALT))
+
+#counting 
+counts <- snps_df %>%
+ group_by(mutation)%>%
+summarise(counts = n()) 
+
+ 
+ # Set y-axis limit to extend to 150
+bar_positions <- barplot(counts$counts, las = 2, names.arg = counts$mutation, xlab = "Mutations", ylim = c(0, 150))
+
+# Add text labels on top of each bar
+text(x = bar_positions, y = counts$counts, labels = counts$counts, pos = 3, cex = 0.8, col = "blue")
+
+# Create a ggplot with continuous x-axis and lines defining X and Y axes
+# Load ggplot2 package
+library(ggplot2)
+
+# Create the plot
+ggplot(counts, aes(x = reorder(mutation, -counts), y = counts)) +  # Reorder mutations by counts in descending order
+  geom_bar(stat = "identity", fill = "skyblue") +  # Bar plot with actual counts
+  geom_text(aes(label = counts), vjust = -0.3, color = "blue", size = 3) +  # Add text on top of bars
+  labs(x = "Variation", y = "Counts") +  # Axis labels
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate x-axis labels for better readability
+  theme_minimal() +  # Minimal theme for cleaner look
+  theme(
+    axis.line = element_line(color = "black", size = 1),  # Add black axis lines
+    axis.ticks = element_line(color = "black"),  # Add ticks on the axes
+    panel.border = element_rect(color = "black", fill = NA, size = 1)  # Add a border around the plot
+  )
