@@ -1,0 +1,67 @@
+###chloramphenicol antimicrobial resistance###
+
+#QC
+fastqc *.fastq
+
+##trimming quality below 30
+cutadapt -q 30 -o trimmed_SRR396518.fastq SRR396518.fa
+
+
+##assembling##
+
+spades.py -s SRR396518_chloramphenicol.fastq -o SRR396518
+
+#Convert FASTQ to Velvet format:#(ref)
+velveth SRR396537 60  -fasta -short ref_genome/SRR396537.fasta
+
+#Assemble with Velvet#
+velvetg SRR396537/
+
+
+
+##remove contigs below 1000
+seqkit seq -m 1000 SRR396518/SRR396518.fa -g -o SRR396518/filtered_SRR396518.fa
+
+
+##counting
+grep "^>" velvet_output/contigs.fa | awk '{ print $1 }' 
+
+
+##merge all contig files
+cat *.fa > merged_contigs.fa
+
+seqkit seq -m 1000 merged_contigs.fa -g  -o filtered_contig.fa
+
+
+##variant calling##
+#index reference
+bwa index SRR396537/SRR396537.fa 
+
+#mapping
+bwa mem SRR396537/SRR396537.fa contigs/filtered_contig.fa > read_mapping/contigs_aligned.sam
+
+#sam to bam
+samtools view -Sb contigs_aligned.sam > contigs_aligned.bam
+
+#sort
+samtools sort -o sorted_aligned.bam aligned.bam
+
+
+#index
+samtools index contigs_aligned_sorted.bam
+
+#Variant calling
+bcftools mpileup -f SRR396537/SRR396537.fa read_mapping/contigs_aligned_sorted.bam | bcftools call -mv -Oz -o variants.vcf.gz
+
+##filter out snps##
+bcftools view -v snps vc/variants.vcf -o vc/snps_only.vcf
+
+
+# Install SnpEff 
+conda install -c bioconda snpeff
+
+##Replace sequence identifiers
+sed -E '/^[^#]/s/NODE_[0-9]+_length_[0-9]+_cov_[0-9.]+/Chromosome/g' snps_only.vcf > chrom.vcf
+
+# Annotate the VCF file
+snpEff vc/chrom.vcf Escherichia_coli_str_k_12_substr__mg1655 -stats vc/stats.html> annotated_variants.vcf
