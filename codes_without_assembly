@@ -1,0 +1,37 @@
+###chloramphenicol without assembly##
+
+##merge fastq files
+cat SRR396518_chloramphenicol.fastq SRR396519_chloramphenicol.fastq SRR396520_chloramphenicol.fastq SRR396521_chloramphenicol.fastq SRR396522_chloramphenicol.fastq SRR396523_chloramphenicol.fastq > new/merged_file.fastq
+
+##QC
+fastqc merged_file.fastq 
+
+
+##trimming quality below 30
+cutadapt -q 30 -o trimmed.fastq merged_file.fastq 
+
+##alignment 
+bwa mem ref_genome/SRR396537.fasta trimmed.fastq > read_mapping/aligned.sam
+
+
+#sam to bam
+samtools view -Sb aligned.sam > aligned.bam
+
+#sort
+samtools sort -o sorted_aligned.bam aligned.bam
+
+#index
+samtools index sorted_aligned.bam
+
+#variant calling
+bcftools mpileup -f ref_genome/SRR396537.fasta sorted_aligned.bam | bcftools call -mv -Oz -o calls.vcf
+
+##filter out snps##
+bcftools view -v snps calls.vcf -o snps_only.vcf
+
+####Replace sequence identifiers
+sed -E '/^[^#]/s/NODE_[0-9]+_length_[0-9]+_cov_[0-9.]+/Chromosome/g' snp_only.vcf > chrom.vcf
+
+#Annotate the VCF file
+snpEff chrom.vcf Escherichia_coli_str_k_12_substr__mg1655 -stats stats.html> snps_ann.vcfcon
+
